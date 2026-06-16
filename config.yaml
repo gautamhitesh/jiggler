@@ -1,0 +1,63 @@
+# Developer Activity Simulator — Default Configuration
+# Purpose: QA testing and validation of monitoring system behavior
+
+# Total execution duration in minutes
+duration_minutes: 60
+
+# Activity toggles
+mouse_enabled: true
+keyboard_enabled: true
+vscode_enabled: true
+
+# Probability of idle period between actions (0.0 to 1.0)
+idle_probability: 0.25
+
+# Typing speed in words per minute
+typing_speed_wpm: 50
+
+# Mouse movement frequency in seconds (average interval between moves)
+mouse_move_interval: 3.0
+
+# Random seed for deterministic runs (null for random)
+random_seed: 12345
+
+# Test scenario: continuous | intermittent | edge_timeout | long_duration | randomized
+scenario: randomized
+
+# Logging verbosity: DEBUG | INFO | WARNING | ERROR
+logging_verbosity: INFO
+
+# Report output formats
+report_formats:
+  - json
+  - csv
+  - html
+
+# Report output directory
+report_dir: ./reports
+
+# Log output directory
+log_dir: ./logs
+
+# Target applications for window management
+target_applications:
+  - "Visual Studio Code"
+  - "Windows Terminal"
+  - "Google Chrome"
+
+# VS Code specific settings
+vscode:
+  workspace_path: ./test_workspace
+  auto_save_interval: 30  # seconds between auto-saves
+
+# Edge timeout scenario settings
+edge_timeout:
+  timeout_threshold_seconds: 300  # 5 minutes
+  activity_delta_seconds: 10     # act this many seconds before timeout
+
+# Intermittent scenario settings
+intermittent:
+  burst_duration_min: 120    # seconds
+  burst_duration_max: 300    # seconds
+  idle_duration_min: 60      # seconds
+  idle_duration_max: 180     # seconds
