@@ -101,6 +101,48 @@ def parse_args() -> argparse.Namespace:
         help="Enable DEBUG-level logging verbosity",
     )
 
+    parser.add_argument(
+        "--mouse-only",
+        action="store_true",
+        default=False,
+        help="Run only mouse activities (disables keyboard and vscode)",
+    )
+
+    parser.add_argument(
+        "--keyboard-only",
+        action="store_true",
+        default=False,
+        help="Run only keyboard activities (disables mouse and vscode)",
+    )
+
+    parser.add_argument(
+        "--vscode-only",
+        action="store_true",
+        default=False,
+        help="Run only VS Code activities (disables mouse and keyboard)",
+    )
+
+    parser.add_argument(
+        "--no-mouse",
+        action="store_true",
+        default=False,
+        help="Disable mouse activities",
+    )
+
+    parser.add_argument(
+        "--no-keyboard",
+        action="store_true",
+        default=False,
+        help="Disable keyboard activities",
+    )
+
+    parser.add_argument(
+        "--no-vscode",
+        action="store_true",
+        default=False,
+        help="Disable VS Code activities",
+    )
+
     return parser.parse_args()
 
 
@@ -137,6 +179,28 @@ def main() -> int:
         overrides["log_dir"] = args.log_dir
     if args.verbose:
         overrides["logging_verbosity"] = "DEBUG"
+
+    # Action exclusive modes
+    if args.mouse_only:
+        overrides["mouse_enabled"] = True
+        overrides["keyboard_enabled"] = False
+        overrides["vscode_enabled"] = False
+    elif args.keyboard_only:
+        overrides["mouse_enabled"] = False
+        overrides["keyboard_enabled"] = True
+        overrides["vscode_enabled"] = False
+    elif args.vscode_only:
+        overrides["mouse_enabled"] = False
+        overrides["keyboard_enabled"] = False
+        overrides["vscode_enabled"] = True
+    else:
+        # Apply individual disable flags
+        if args.no_mouse:
+            overrides["mouse_enabled"] = False
+        if args.no_keyboard:
+            overrides["keyboard_enabled"] = False
+        if args.no_vscode:
+            overrides["vscode_enabled"] = False
 
     if overrides:
         config = config.apply_overrides(**overrides)

@@ -207,7 +207,7 @@ class Scheduler:
         while elapsed < duration_seconds:
             # Randomly decide: action or idle
             if self.rng.random() < self.config.idle_probability:
-                idle_time = self.rng.uniform(5.0, 60.0)
+                idle_time = self.rng.uniform(5.0, 20.0)
                 idle_time = min(idle_time, duration_seconds - elapsed)
                 yield ScheduledAction(
                     delay=idle_time,

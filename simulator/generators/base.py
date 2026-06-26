@@ -15,6 +15,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional
 
+from pyautogui import FailSafeException
+
 if TYPE_CHECKING:
     from simulator.config import SimulatorConfig
     from simulator.logging.event_logger import EventLogger
@@ -174,6 +176,8 @@ class BaseGenerator(ABC):
             self.event_logger.log_event(event)
             self.logger.debug("Executed %s.%s", self.generator_type, action_name)
             return event
+        except FailSafeException:
+            raise
         except Exception as e:
             self.logger.error(
                 "Failed to execute %s.%s: %s", self.generator_type, action_name, e

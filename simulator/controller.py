@@ -12,6 +12,7 @@ import random
 import signal
 import sys
 import time
+from pyautogui import FailSafeException
 from datetime import datetime, timezone
 from typing import Any
 
@@ -198,6 +199,9 @@ class Controller:
         except KeyboardInterrupt:
             end_reason = "interrupted"
             logger.warning("Interrupted by user (KeyboardInterrupt)")
+        except FailSafeException:
+            end_reason = "interrupted"
+            logger.warning("Interrupted by user (PyAutoGUI FailSafeException)")
         except Exception as e:
             end_reason = "error"
             logger.error("Simulation failed with error: %s", e, exc_info=True)
