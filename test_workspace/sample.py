@@ -1,4 +1,4 @@
-"""Sample Python module for VS Code adapter testing.
+    """Sample Python module for VS Code adapter testing.
 
 This file is used by the Developer Activity Simulator to test
 VS Code interactions like opening files, editing, and saving.
@@ -129,3 +129,10 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+calculate_metrics(data: list[dict]) -> dict:
+    """Calculate aggregate metrics from raw data entries."""
+    total = sum(entry.get("value", 0) for entry in data)
+    count = len(data)
+    average = total / count if count > 0 else 0
+    return {"total": total, "count": count, "average": round(average, 2)}
+"""

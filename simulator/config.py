@@ -22,6 +22,7 @@ class ScenarioType(str, Enum):
     EDGE_TIMEOUT = "edge_timeout"
     LONG_DURATION = "long_duration"
     RANDOMIZED = "randomized"
+    AI_DRIVEN = "ai_driven"
 
 
 class LogLevel(str, Enum):
@@ -82,6 +83,49 @@ class IntermittentConfig(BaseModel):
         return v
 
 
+class AIConfig(BaseModel):
+    """AI-driven scenario configuration.
+
+    Controls the OpenRouter API integration for LLM-powered
+    action selection via tool calling.
+    """
+
+    api_key: Optional[str] = Field(
+        default=None, description="OpenRouter API key (overridden by CLI/env var)"
+    )
+    model: str = Field(
+        default="google/gemini-2.0-flash",
+        description="OpenRouter model identifier",
+    )
+    base_url: str = Field(
+        default="https://openrouter.ai/api/v1",
+        description="OpenRouter API base URL",
+    )
+    system_prompt: Optional[str] = Field(
+        default=None, description="Custom AI persona system prompt override"
+    )
+    temperature: float = Field(
+        default=0.9, ge=0.0, le=2.0,
+        description="Sampling temperature — higher is more random/human-like",
+    )
+    context_window: int = Field(
+        default=10, ge=1, le=50,
+        description="Number of past actions to include as conversation context",
+    )
+    max_api_calls: int = Field(
+        default=500, ge=1,
+        description="Maximum API calls per session (safety cost cap)",
+    )
+    thinking_delay_min: float = Field(
+        default=1.0, ge=0.0,
+        description="Minimum seconds between AI decisions (simulates thinking)",
+    )
+    thinking_delay_max: float = Field(
+        default=5.0, ge=0.0,
+        description="Maximum seconds between AI decisions",
+    )
+
+
 class SimulatorConfig(BaseModel):
     """Top-level configuration for the Developer Activity Simulator.
 
@@ -136,6 +180,7 @@ class SimulatorConfig(BaseModel):
     vscode: VSCodeConfig = Field(default_factory=VSCodeConfig)
     edge_timeout: EdgeTimeoutConfig = Field(default_factory=EdgeTimeoutConfig)
     intermittent: IntermittentConfig = Field(default_factory=IntermittentConfig)
+    ai: AIConfig = Field(default_factory=AIConfig)
 
     @property
     def duration_seconds(self) -> float:
@@ -187,5 +232,10 @@ class SimulatorConfig(BaseModel):
         data = self.model_dump()
         for key, value in kwargs.items():
             if value is not None:
-                data[key] = value
+                # Shallow-merge dicts so partial sub-config overrides work
+                # (e.g., ai={"api_key": "..."} merges into existing AIConfig)
+                if isinstance(value, dict) and isinstance(data.get(key), dict):
+                    data[key] = {**data[key], **value}
+                else:
+                    data[key] = value
         return SimulatorConfig(**data)

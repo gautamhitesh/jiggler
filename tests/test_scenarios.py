@@ -203,3 +203,82 @@ class TestScenarios:
 
         assert "available" in available
         assert "unavailable" not in available
+
+
+class TestAIDrivenScenario:
+    """Tests for the AI-driven scenario."""
+
+    @pytest.fixture
+    def ai_config(self):
+        from simulator.config import AIConfig
+
+        return SimulatorConfig(
+            duration_minutes=1,
+            mouse_enabled=True,
+            keyboard_enabled=True,
+            vscode_enabled=False,
+            random_seed=42,
+            ai=AIConfig(api_key="test-key", max_api_calls=3),
+        )
+
+    @pytest.fixture
+    def rng(self):
+        return random.Random(42)
+
+    @pytest.fixture
+    def scheduler(self, ai_config, rng):
+        return Scheduler(ai_config, rng)
+
+    @pytest.fixture
+    def mock_generators(self):
+        mouse = MagicMock()
+        mouse.is_available.return_value = True
+        mouse.get_available_actions.return_value = ["move_realistic", "click_left"]
+        mouse.generator_type = "mouse"
+
+        keyboard = MagicMock()
+        keyboard.is_available.return_value = True
+        keyboard.get_available_actions.return_value = ["type_text"]
+        keyboard.generator_type = "keyboard"
+
+        return {"mouse": mouse, "keyboard": keyboard}
+
+    def test_scenario_properties(self, ai_config, scheduler, mock_generators, rng):
+        from simulator.scenarios.ai_driven import AIDrivenScenario
+
+        scenario = AIDrivenScenario(ai_config, scheduler, mock_generators, rng)
+        assert "AI-Driven" in scenario.name
+        assert "AI model" in scenario.description
+
+    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
+    def test_scenario_yields_actions_from_brain(
+        self, ai_config, scheduler, mock_generators, rng
+    ):
+        from unittest.mock import patch
+        from simulator.scenarios.ai_driven import AIDrivenScenario
+
+        scenario = AIDrivenScenario(ai_config, scheduler, mock_generators, rng)
+
+        mock_actions = [
+            ScheduledAction(delay=1.0, generator_type="mouse", action_name="click_left"),
+        ]
+
+        with patch("simulator.ai.ai_brain.OpenAI"):
+            with patch.object(
+                type(scenario), "brain", new_callable=lambda: property(lambda self: MagicMock(
+                    decide_next_actions=MagicMock(return_value=mock_actions),
+                    api_calls_remaining=3,
+                    api_calls_made=0,
+                ))
+            ):
+                actions = list(scenario.get_action_sequence())
+                # Should yield at least some actions
+                assert len(actions) > 0
+
+    def test_scenario_has_record_result(self, ai_config, scheduler, mock_generators, rng):
+        """Test that AIDrivenScenario exposes record_result for the Controller."""
+        from simulator.scenarios.ai_driven import AIDrivenScenario
+
+        scenario = AIDrivenScenario(ai_config, scheduler, mock_generators, rng)
+        assert hasattr(scenario, "record_result")
+        assert callable(scenario.record_result)

@@ -9,6 +9,7 @@ import pytest
 import yaml
 
 from simulator.config import (
+    AIConfig,
     EdgeTimeoutConfig,
     IntermittentConfig,
     LogLevel,
@@ -148,6 +149,13 @@ class TestSimulatorConfig:
         overridden = config.apply_overrides(duration_minutes=None)
         assert overridden.duration_minutes == 60
 
+    def test_apply_overrides_merges_dict_values(self):
+        """Test that dict overrides are shallow-merged, not replaced."""
+        config = SimulatorConfig(ai=AIConfig(api_key="original", model="test/model"))
+        overridden = config.apply_overrides(ai={"api_key": "new-key"})
+        assert overridden.ai.api_key == "new-key"
+        assert overridden.ai.model == "test/model"  # Not wiped
+
 
 class TestSubConfigs:
     """Tests for sub-configuration models."""
@@ -196,3 +204,84 @@ class TestSubConfigs:
                 idle_duration_min=200,
                 idle_duration_max=100,
             )
+
+
+class TestAIConfig:
+    """Tests for AIConfig validation."""
+
+    def test_default_ai_config(self):
+        """Test that default AIConfig is valid."""
+        cfg = AIConfig()
+        assert cfg.api_key is None
+        assert cfg.model == "google/gemini-2.0-flash"
+        assert cfg.base_url == "https://openrouter.ai/api/v1"
+        assert cfg.temperature == 0.9
+        assert cfg.context_window == 10
+        assert cfg.max_api_calls == 500
+
+    def test_ai_config_temperature_bounds(self):
+        """Test that temperature must be in [0.0, 2.0]."""
+        cfg = AIConfig(temperature=0.0)
+        assert cfg.temperature == 0.0
+
+        cfg = AIConfig(temperature=2.0)
+        assert cfg.temperature == 2.0
+
+        with pytest.raises(Exception):
+            AIConfig(temperature=-0.1)
+
+        with pytest.raises(Exception):
+            AIConfig(temperature=2.1)
+
+    def test_ai_config_context_window_bounds(self):
+        """Test context_window must be in [1, 50]."""
+        with pytest.raises(Exception):
+            AIConfig(context_window=0)
+
+        with pytest.raises(Exception):
+            AIConfig(context_window=51)
+
+    def test_ai_config_max_api_calls_must_be_positive(self):
+        """Test max_api_calls must be >= 1."""
+        with pytest.raises(Exception):
+            AIConfig(max_api_calls=0)
+
+    def test_ai_driven_scenario_type(self):
+        """Test that AI_DRIVEN is a valid scenario type."""
+        config = SimulatorConfig(scenario=ScenarioType.AI_DRIVEN)
+        assert config.scenario == ScenarioType.AI_DRIVEN
+
+    def test_ai_config_in_simulator_config(self):
+        """Test that SimulatorConfig includes AIConfig."""
+        config = SimulatorConfig()
+        assert isinstance(config.ai, AIConfig)
+        assert config.ai.model == "google/gemini-2.0-flash"
+
+    def test_ai_config_from_yaml(self):
+        """Test loading AI config from YAML."""
+        yaml_content = {
+            "scenario": "ai_driven",
+            "ai": {
+                "api_key": "test-key",
+                "model": "anthropic/claude-sonnet-4",
+                "temperature": 0.7,
+                "max_api_calls": 100,
+            },
+        }
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".yaml", delete=False
+        ) as f:
+            yaml.dump(yaml_content, f)
+            temp_path = f.name
+
+        try:
+            config = SimulatorConfig.from_yaml(temp_path)
+            assert config.scenario == ScenarioType.AI_DRIVEN
+            assert config.ai.api_key == "test-key"
+            assert config.ai.model == "anthropic/claude-sonnet-4"
+            assert config.ai.temperature == 0.7
+            assert config.ai.max_api_calls == 100
+        finally:
+            os.unlink(temp_path)
+

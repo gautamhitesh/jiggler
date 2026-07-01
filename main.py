@@ -143,6 +143,30 @@ def parse_args() -> argparse.Namespace:
         help="Disable VS Code activities",
     )
 
+    # AI-driven scenario options (v2.0)
+    ai_group = parser.add_argument_group("AI-driven mode (v2.0)")
+
+    ai_group.add_argument(
+        "--ai-api-key",
+        type=str,
+        default=None,
+        help="OpenRouter API key (overrides config/env OPENROUTER_API_KEY)",
+    )
+
+    ai_group.add_argument(
+        "--ai-model",
+        type=str,
+        default=None,
+        help="OpenRouter model ID (e.g. google/gemini-2.0-flash, anthropic/claude-sonnet-4)",
+    )
+
+    ai_group.add_argument(
+        "--ai-max-calls",
+        type=int,
+        default=None,
+        help="Maximum API calls per session (safety cost cap, default: 500)",
+    )
+
     return parser.parse_args()
 
 
@@ -201,6 +225,17 @@ def main() -> int:
             overrides["keyboard_enabled"] = False
         if args.no_vscode:
             overrides["vscode_enabled"] = False
+
+    # AI-driven mode overrides
+    ai_overrides = {}
+    if args.ai_api_key is not None:
+        ai_overrides["api_key"] = args.ai_api_key
+    if args.ai_model is not None:
+        ai_overrides["model"] = args.ai_model
+    if args.ai_max_calls is not None:
+        ai_overrides["max_api_calls"] = args.ai_max_calls
+    if ai_overrides:
+        overrides["ai"] = ai_overrides
 
     if overrides:
         config = config.apply_overrides(**overrides)

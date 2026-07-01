@@ -31,6 +31,7 @@ from simulator.scenarios.edge_timeout import EdgeTimeoutScenario
 from simulator.scenarios.intermittent import IntermittentScenario
 from simulator.scenarios.long_duration import LongDurationScenario
 from simulator.scenarios.randomized import RandomizedScenario
+from simulator.scenarios.ai_driven import AIDrivenScenario
 from simulator.scheduler import Scheduler
 
 logger = logging.getLogger(__name__)
@@ -50,6 +51,7 @@ class Controller:
         ScenarioType.EDGE_TIMEOUT: EdgeTimeoutScenario,
         ScenarioType.LONG_DURATION: LongDurationScenario,
         ScenarioType.RANDOMIZED: RandomizedScenario,
+        ScenarioType.AI_DRIVEN: AIDrivenScenario,
     }
 
     def __init__(self, config: SimulatorConfig, dry_run: bool = False) -> None:
@@ -263,8 +265,12 @@ class Controller:
                 )
                 continue
 
-            generator.execute(action.action_name)
+            event = generator.execute(action.action_name)
             self._actions_executed += 1
+
+            # Feed result back to AI brain if scenario supports it
+            if hasattr(scenario, 'record_result'):
+                scenario.record_result(action, event)
 
             # Periodic progress logging
             if self._actions_executed % 50 == 0:

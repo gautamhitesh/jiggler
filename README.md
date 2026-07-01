@@ -1,4 +1,4 @@
-# Developer Activity Simulator (Jiggler)
+# Developer Activity Simulator (Jiggler) v2.0
 
 ![Jiggler Project Banner](assets/banner.png)
 
@@ -62,13 +62,24 @@ graph TD
     E -->|"appends telemetry"| K["JSON Lines Logs (.jsonl)"]
     F -->|"aggregates"| K
     F --> L["HTML Reports with charts | CSV | JSON"]
+
+    B -->|"ai_driven scenario"| M["AIDrivenScenario"]
+    M --> N["AIBrain"]
+    N --> O["ToolRegistry"]
+    O -->|"introspects"| D
+    N -->|"calls"| P["OpenRouter API"]
+    P -->|"tool_calls"| N
+
+    style N fill:#6366f1,stroke:#4f46e5,color:#fff
+    style P fill:#f59e0b,stroke:#d97706,color:#fff
+    style O fill:#8b5cf6,stroke:#7c3aed,color:#fff
 ```
 
 ---
 
 ## 📈 Test Scenarios
 
-The simulator executes workstation patterns based on five target testing scenarios:
+The simulator executes workstation patterns based on six target testing scenarios:
 
 | Scenario | Identifier | Activity Signature | Target Use Case |
 | :--- | :--- | :--- | :--- |
@@ -77,6 +88,7 @@ The simulator executes workstation patterns based on five target testing scenari
 | **Edge Timeout** | `edge_timeout` | Long idleness, waking up shortly before timeout limits. | Validating reset behavior on threshold boundaries. |
 | **Long Duration** | `long_duration` | Multi-hour runs with background telemetry self-checks. | Confirming tool stability and memory efficiency. |
 | **Randomized** | `randomized` | Unpredictable, fully randomized timings and generators. | General fuzzing of monitoring agent heuristics. |
+| **AI-Driven** 🤖 | `ai_driven` | LLM-powered actions via OpenRouter tool calling. | Contextually coherent, human-like activity patterns. |
 
 ---
 
@@ -126,6 +138,33 @@ Enable debug logs and output reporting details to a custom folder:
 ```bash
 python main.py --verbose --report-dir ./custom_reports_dir
 ```
+
+### 🤖 AI-Driven Mode (v2.0)
+
+Run with AI-powered action selection using any OpenRouter-compatible model:
+```bash
+# Using Gemini Flash (default, cheapest)
+python main.py --scenario ai_driven --ai-api-key YOUR_OPENROUTER_KEY --duration 10
+
+# Using Claude Sonnet
+python main.py --scenario ai_driven --ai-api-key YOUR_KEY --ai-model anthropic/claude-sonnet-4
+
+# Dry-run to see what the AI would do
+python main.py --scenario ai_driven --ai-api-key YOUR_KEY --dry-run --duration 5
+
+# Limit API calls for cost control
+python main.py --scenario ai_driven --ai-api-key YOUR_KEY --ai-max-calls 50
+```
+
+You can also set the API key via environment variable:
+```bash
+export OPENROUTER_API_KEY=your_key_here
+python main.py --scenario ai_driven
+```
+
+**How it works:** The AI model receives tool definitions for all available actions (mouse, keyboard, VS Code, app switching) and decides what a real developer would do next. It maintains context of recent actions to make coherent decisions — e.g., opening a file, then scrolling through it, then typing code.
+
+**Cost:** With `google/gemini-2.0-flash` (default), a 60-minute session costs approximately $0.01. Premium models cost more; use `--ai-max-calls` to set a safety cap.
 
 ---
 
