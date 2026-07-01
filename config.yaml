@@ -74,3 +74,19 @@ intermittent:
 #   max_api_calls: 500                     # Safety cap per session
 #   thinking_delay_min: 1.0                # Min seconds between AI decisions
 #   thinking_delay_max: 5.0                # Max seconds between AI decisions
+
+# Safety settings (v2.1)
+safety:
+  window_guard_enabled: true       # Only act when a target app is in focus
+  refocus_on_mismatch: true        # Try to bring a target app to foreground
+  window_guard_timeout: 30.0       # Max seconds to wait for target window
+  presence_detection_enabled: true # Pause when real user is active
+  resume_delay_seconds: 5.0        # Seconds to wait after user stops
+  sandbox_enabled: true            # Use isolated workspace for file ops
+  sandbox_dir: "./.jiggler_sandbox"
+  clean_on_exit: false             # Delete sandbox files after run
+  log_blocked_actions: true
+  blocked_actions:
+    # Explicitly block potentially destructive actions just in case
+    - "keyboard__press_hotkey_paste"
+
