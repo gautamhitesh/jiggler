@@ -33,6 +33,8 @@ from simulator.scenarios.long_duration import LongDurationScenario
 from simulator.scenarios.randomized import RandomizedScenario
 from simulator.scenarios.ai_driven import AIDrivenScenario
 from simulator.scheduler import Scheduler
+from simulator.safety.sandbox import SandboxManager
+from simulator.safety.presence_detector import PresenceDetector
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +82,12 @@ class Controller:
 
         # Initialize scheduler
         self.scheduler = Scheduler(config, self.rng)
+        
+        # Initialize safety systems
+        self.sandbox = SandboxManager(config)
+        self.presence_detector = None
+        if config.safety.presence_detection_enabled:
+            self.presence_detector = PresenceDetector(config)
 
         # Initialize generators
         self.generators: dict[str, BaseGenerator] = {}
@@ -121,6 +129,11 @@ class Controller:
             app_gen.dry_run = self.dry_run
             self.generators["app_interaction"] = app_gen
             logger.info("App interaction generator initialized")
+            
+        # Wire presence detector to all generators
+        if self.presence_detector:
+            for gen in self.generators.values():
+                gen.presence_detector = self.presence_detector
 
     def _setup_signal_handlers(self) -> None:
         """Register signal handlers for graceful shutdown."""
@@ -194,6 +207,13 @@ class Controller:
         if self.dry_run:
             logger.info("*** DRY RUN MODE -- no actual input events will be generated ***")
 
+        # Set up sandbox
+        self.sandbox.setup()
+        
+        # Start presence detector
+        if self.presence_detector:
+            self.presence_detector.start()
+
         # Execute scenario
         end_reason = "completed"
         try:
@@ -224,6 +244,9 @@ class Controller:
         self._generate_reports()
 
         # Cleanup
+        if self.presence_detector:
+            self.presence_detector.stop()
+        self.sandbox.cleanup()
         self.event_logger.close()
 
     def _execute_scenario(self, scenario: BaseScenario) -> None:
@@ -236,6 +259,12 @@ class Controller:
             if self._shutdown_requested:
                 logger.info("Shutdown requested -- stopping action execution")
                 break
+                
+            # Check user presence safety
+            if self.presence_detector and self.presence_detector.is_user_active:
+                logger.info("Safety: Real user activity detected — pausing...")
+                self.presence_detector.wait_for_user_idle()
+                logger.info("Safety: User idle — resuming execution")
 
             # Handle idle actions (just sleep)
             if action.generator_type == "idle":

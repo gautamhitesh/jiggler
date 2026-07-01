@@ -58,6 +58,11 @@ graph TD
     D --> I["AppInteractionGenerator"]
     D --> J["VSCodeAdapter"]
     
+    Q["Safety Systems"] --> B
+    Q -.->|"WindowGuard"| D
+    Q -.->|"SandboxManager"| J
+    Q -.->|"PresenceDetector"| B
+    
     C -->|"schedules next events"| D
     E -->|"appends telemetry"| K["JSON Lines Logs (.jsonl)"]
     F -->|"aggregates"| K
@@ -73,7 +78,22 @@ graph TD
     style N fill:#6366f1,stroke:#4f46e5,color:#fff
     style P fill:#f59e0b,stroke:#d97706,color:#fff
     style O fill:#8b5cf6,stroke:#7c3aed,color:#fff
+    style Q fill:#10b981,stroke:#047857,color:#fff
 ```
+
+---
+
+## 🛡️ Safety & Isolation (v2.1)
+
+Jiggler is designed to run safely alongside real developer workloads without corrupting files, polluting chat windows, or fighting with the user for control. 
+
+Three core safety systems are active by default:
+
+1. **Window Focus Guard:** Jiggler continuously validates the active foreground window against an allowlist (`target_applications`). If an unknown window is focused (e.g., Slack, Email), Jiggler will attempt to refocus a safe app or **pause** execution until the user returns focus to a safe application.
+2. **User Presence Detector:** Using background listeners, Jiggler monitors the physical keyboard and mouse. If real human input is detected, Jiggler instantly **pauses** all automated actions. It resumes automatically after a configurable cooldown (default 5s) once the user stops typing/moving.
+3. **Sandbox File Manager:** To prevent accidental edits to real project code, the VS Code adapter is restricted to a temporary, isolated `.jiggler_sandbox` directory. Jiggler automatically populates this directory with dummy code files on startup and optionally cleans it up on exit.
+
+*Safety features can be bypassed via configuration or CLI flags (`--no-safety-guard`, `--no-sandbox`, `--no-presence-detect`) for dedicated test environments.*
 
 ---
 

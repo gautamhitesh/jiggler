@@ -64,11 +64,24 @@ class MouseGenerator(BaseGenerator):
             raise ValueError(f"Unknown mouse action: {action_name}")
         return method()
 
+    def _get_bounds(self) -> tuple[int, int, int, int]:
+        """Get the allowed coordinate boundaries for mouse movement."""
+        safety = self.config.safety
+        if safety.mouse_boundary_enabled:
+            return (
+                safety.mouse_boundary_x_min,
+                safety.mouse_boundary_y_min,
+                safety.mouse_boundary_x_max,
+                safety.mouse_boundary_y_max,
+            )
+        screen_w, screen_h = pyautogui.size()
+        return 0, 0, screen_w - 1, screen_h - 1
+
     def _action_move_realistic(self) -> ActivityEvent:
         """Move cursor along a realistic Bézier curve path to a random target."""
-        screen_w, screen_h = pyautogui.size()
-        target_x = self.rng.randint(50, screen_w - 50)
-        target_y = self.rng.randint(50, screen_h - 50)
+        xmin, ymin, xmax, ymax = self._get_bounds()
+        target_x = self.rng.randint(xmin, xmax)
+        target_y = self.rng.randint(ymin, ymax)
 
         # Calculate duration based on distance for natural speed
         current_x, current_y = pyautogui.position()
@@ -96,9 +109,9 @@ class MouseGenerator(BaseGenerator):
 
     def _action_move_random(self) -> ActivityEvent:
         """Move cursor instantly to a random screen position."""
-        screen_w, screen_h = pyautogui.size()
-        target_x = self.rng.randint(0, screen_w - 1)
-        target_y = self.rng.randint(0, screen_h - 1)
+        xmin, ymin, xmax, ymax = self._get_bounds()
+        target_x = self.rng.randint(xmin, xmax)
+        target_y = self.rng.randint(ymin, ymax)
 
         pyautogui.moveTo(target_x, target_y, duration=0.1)
 

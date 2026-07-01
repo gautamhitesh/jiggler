@@ -167,6 +167,37 @@ def parse_args() -> argparse.Namespace:
         help="Maximum API calls per session (safety cost cap, default: 500)",
     )
 
+    # Safety overrides (v2.1)
+    safety_group = parser.add_argument_group("Safety options (v2.1)")
+
+    safety_group.add_argument(
+        "--no-safety-guard",
+        action="store_true",
+        default=False,
+        help="Disable the active window focus guard",
+    )
+
+    safety_group.add_argument(
+        "--no-presence-detect",
+        action="store_true",
+        default=False,
+        help="Disable pausing when real user input is detected",
+    )
+
+    safety_group.add_argument(
+        "--no-sandbox",
+        action="store_true",
+        default=False,
+        help="Disable isolated sandbox (WARNING: VS Code will act on actual workspace)",
+    )
+
+    safety_group.add_argument(
+        "--clean-sandbox",
+        action="store_true",
+        default=False,
+        help="Delete the sandbox directory when the session ends",
+    )
+
     return parser.parse_args()
 
 
@@ -236,6 +267,19 @@ def main() -> int:
         ai_overrides["max_api_calls"] = args.ai_max_calls
     if ai_overrides:
         overrides["ai"] = ai_overrides
+
+    # Safety overrides
+    safety_overrides = {}
+    if args.no_safety_guard:
+        safety_overrides["window_guard_enabled"] = False
+    if args.no_presence_detect:
+        safety_overrides["presence_detection_enabled"] = False
+    if args.no_sandbox:
+        safety_overrides["sandbox_enabled"] = False
+    if args.clean_sandbox:
+        safety_overrides["clean_on_exit"] = True
+    if safety_overrides:
+        overrides["safety"] = safety_overrides
 
     if overrides:
         config = config.apply_overrides(**overrides)

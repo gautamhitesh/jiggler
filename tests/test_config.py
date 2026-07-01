@@ -14,6 +14,7 @@ from simulator.config import (
     IntermittentConfig,
     LogLevel,
     ReportFormat,
+    SafetyConfig,
     ScenarioType,
     SimulatorConfig,
     VSCodeConfig,
@@ -282,6 +283,53 @@ class TestAIConfig:
             assert config.ai.model == "anthropic/claude-sonnet-4"
             assert config.ai.temperature == 0.7
             assert config.ai.max_api_calls == 100
+        finally:
+            os.unlink(temp_path)
+
+
+class TestSafetyConfig:
+    """Tests for SafetyConfig defaults and validation."""
+
+    def test_default_safety_config(self):
+        """Test default values for safety config."""
+        cfg = SafetyConfig()
+        assert cfg.window_guard_enabled is True
+        assert cfg.refocus_on_mismatch is True
+        assert cfg.window_guard_timeout == 30.0
+        assert cfg.presence_detection_enabled is True
+        assert cfg.resume_delay_seconds == 5.0
+        assert cfg.sandbox_enabled is True
+        assert cfg.clean_on_exit is False
+        assert cfg.log_blocked_actions is True
+        assert len(cfg.blocked_actions) == 0
+
+    def test_safety_config_in_simulator_config(self):
+        """Test that SimulatorConfig includes SafetyConfig."""
+        config = SimulatorConfig()
+        assert isinstance(config.safety, SafetyConfig)
+        assert config.safety.window_guard_enabled is True
+
+    def test_safety_config_from_yaml(self):
+        """Test loading safety config from YAML."""
+        yaml_content = {
+            "safety": {
+                "window_guard_enabled": False,
+                "sandbox_dir": "/tmp/test_sandbox",
+                "clean_on_exit": True,
+                "blocked_actions": ["mouse__click_left"],
+            }
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(yaml_content, f)
+            temp_path = f.name
+
+        try:
+            config = SimulatorConfig.from_yaml(temp_path)
+            assert config.safety.window_guard_enabled is False
+            assert config.safety.sandbox_dir == "/tmp/test_sandbox"
+            assert config.safety.clean_on_exit is True
+            assert "mouse__click_left" in config.safety.blocked_actions
         finally:
             os.unlink(temp_path)
 

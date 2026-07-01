@@ -17,6 +17,8 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from pyautogui import FailSafeException
 
+from simulator.safety.window_guard import WindowGuard
+
 if TYPE_CHECKING:
     from simulator.config import SimulatorConfig
     from simulator.logging.event_logger import EventLogger
@@ -89,6 +91,10 @@ class BaseGenerator(ABC):
         self.rng = rng
         self.logger = logging.getLogger(self.__class__.__name__)
         self._dry_run = False
+        self._window_guard = WindowGuard(config) if config.safety.window_guard_enabled else None
+        
+        # Inject presence detector reference (set by Controller later)
+        self.presence_detector = None
 
     @property
     def dry_run(self) -> bool:
@@ -159,6 +165,34 @@ class BaseGenerator(ABC):
             )
             self.event_logger.log_event(event)
             return event
+            
+        full_action_name = f"{self.generator_type}__{action_name}"
+        if full_action_name in self.config.safety.blocked_actions:
+            self.logger.warning("Action '%s' is explicitly blocked by config", full_action_name)
+            event = ActivityEvent(
+                event_type=self.generator_type,
+                action=action_name,
+                success=False,
+                error_message="Action blocked by safety configuration",
+                details={"safety_guard": "blocked"},
+            )
+            self.event_logger.log_event(event)
+            return event
+            
+        # Check window guard
+        if self._window_guard and not self._window_guard.is_safe_to_act():
+            self.logger.debug("Window Guard triggered, waiting for safe window...")
+            if not self._window_guard.wait_for_safe_window():
+                self.logger.warning("Window Guard timed out — skipping action '%s'", action_name)
+                event = ActivityEvent(
+                    event_type=self.generator_type,
+                    action=action_name,
+                    success=False,
+                    error_message="Window guard timeout — no target app in focus",
+                    details={"safety_guard": "timeout"},
+                )
+                self.event_logger.log_event(event)
+                return event
 
         if self.dry_run:
             self.logger.info("[DRY RUN] %s.%s", self.generator_type, action_name)
@@ -172,6 +206,8 @@ class BaseGenerator(ABC):
             return event
 
         try:
+            if self.presence_detector:
+                self.presence_detector.suppress()
             event = self._execute_action(action_name)
             self.event_logger.log_event(event)
             self.logger.debug("Executed %s.%s", self.generator_type, action_name)
@@ -190,6 +226,9 @@ class BaseGenerator(ABC):
             )
             self.event_logger.log_event(event)
             return event
+        finally:
+            if self.presence_detector:
+                self.presence_detector.unsuppress()
 
     def random_delay(self, min_seconds: float = 0.1, max_seconds: float = 1.0) -> None:
         """Sleep for a random duration within the given range.

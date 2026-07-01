@@ -46,7 +46,13 @@ class VSCodeAdapter(BaseGenerator):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._workspace_path = Path(self.config.vscode.workspace_path).resolve()
+        
+        # Use sandbox if enabled, otherwise use configured workspace
+        if self.config.safety.sandbox_enabled:
+            self._workspace_path = Path(self.config.safety.sandbox_dir).resolve()
+        else:
+            self._workspace_path = Path(self.config.vscode.workspace_path).resolve()
+            
         self._launched = False
         self._open_files: list[str] = []
 

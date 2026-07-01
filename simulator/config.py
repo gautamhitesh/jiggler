@@ -13,6 +13,40 @@ from typing import Optional
 import yaml
 from pydantic import BaseModel, Field, field_validator
 
+class SafetyConfig(BaseModel):
+    """Safety guard configuration."""
+    
+    # Window Focus Guard
+    window_guard_enabled: bool = True
+    refocus_on_mismatch: bool = True
+    window_check_interval: float = 1.0
+    window_guard_timeout: float = 30.0
+    
+    # User Presence Detector
+    presence_detection_enabled: bool = True
+    resume_delay_seconds: float = 5.0
+    
+    # Sandbox
+    sandbox_enabled: bool = True
+    sandbox_dir: str = "./.jiggler_sandbox"
+    clean_on_exit: bool = False
+    
+    # Logging
+    log_blocked_actions: bool = True
+    
+    # Mouse Bounds
+    mouse_boundary_enabled: bool = False
+    mouse_boundary_x_min: int = 0
+    mouse_boundary_y_min: int = 0
+    mouse_boundary_x_max: int = 1920
+    mouse_boundary_y_max: int = 1080
+    
+    # Blocked Actions (action allowlist/blocklist)
+    blocked_actions: list[str] = Field(
+        default_factory=list,
+        description="List of fully qualified action names (e.g. 'keyboard__press_hotkey_paste') to explicitly block",
+    )
+
 
 class ScenarioType(str, Enum):
     """Supported test scenarios."""
@@ -181,6 +215,7 @@ class SimulatorConfig(BaseModel):
     edge_timeout: EdgeTimeoutConfig = Field(default_factory=EdgeTimeoutConfig)
     intermittent: IntermittentConfig = Field(default_factory=IntermittentConfig)
     ai: AIConfig = Field(default_factory=AIConfig)
+    safety: SafetyConfig = Field(default_factory=SafetyConfig)
 
     @property
     def duration_seconds(self) -> float:
